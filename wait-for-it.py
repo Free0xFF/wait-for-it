@@ -1,5 +1,5 @@
 #-*- encoding=utf-8 -*-
-#!/bin/usr/env python
+#!/bin/usr/env python3
 import socket
 import time
 import getopt
