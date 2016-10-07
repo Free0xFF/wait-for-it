@@ -1,5 +1,5 @@
 #-*- encoding=utf-8 -*-
-
+#!/bin/usr/env python
 import socket
 import time
 import getopt
@@ -22,86 +22,97 @@ Usage:
 ''' %(sys.argv[0])
 	print(usage_info)
 
-def log(info):
+def log(loginfo):
 	global quiet
 	if quiet == 0:
-		print(info)
+		print(loginfo)
 
+def build_log(type,app,time=0):
+	# 1=enable_timeout,2=disable_timeout,3=success_msg,4=timeout_msg
+	loginfo = {
+		 1:"%s: waiting %d seconds for %s" %(sys.argv[0],time,app),
+		 2:"%s: waiting for %s without a timeout" %(sys.argv[0],app),
+		 3:"%s: %s is available after %d seconds" %(sys.argv[0],app,time),
+		 4:"%s: timeout occurred after waiting %d seconds for %s" %(sys.argv[0],time,app),
+	}.get(type)
+	return loginfo
+	
 def wait_for(host, port, timeout):
 	# output some logs
-	notimeout = False
-	if timeout == '0':
-		notimeout = True
-	app = host+":"+str(port)
-	if notimeout:
-		log(sys.argv[0]+": waiting for "+app+" without a timeout")
-	else:
-		log(sys.argv[0]+": waiting "+str(timeout)+" seconds for "+app)
+	disable_timeout = False
+	if timeout == 0: enable_timeout = False
+	app = "%s:%d" %(host,port)
+	loginfo = build_log(1,app,timeout)
+	if disable_timeout: loginfo = build_log(2,app)
+	log(loginfo)
 	
-	# start time
+	# get start time, then attempt to connect,
+	# if succeed,then timeout_flag=0,otherwise timeout,timeout_flag=1
+	timeout_flag = 0
 	start_ts = time.time()
-	
-	# attemp to connect
 	sk = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
 	while True:
 		try:
 			sk.connect((host, port))
-			end_ts = time.time()
-			diff_ts = int(end_ts - start_ts)
-			log(sys.argv[0]+": "+app+" is available after "+str(diff_ts)+" seconds")
 			break
 		except:
-			if notimeout:
-				continue
+			if disable_timeout:	continue
 			time.sleep(1)
-			timeout -= 1
+			timeout = timeout-1
 			if timeout == 0:
-				end_ts = time.time()
-				diff_ts = int(end_ts - start_ts)
-				log(sys.argv[0]+": timeout occurred after waiting "+str(diff_ts)+" seconds for "+host+":"+str(port))
+				timeout_flag = 1
 				break
-
-def start():
-	try:
-		host,port,timeout,quiet,helps = parse_args()
-		if helps == 1:
-			raise Exception("Help information.")
-		if host == '' or port == -1:
-			raise Exception("Host and port must set.")
-		wait_for(host,port,timeout)
-	except Exception as err:
-		print(err)
-		usage()
+	#succeed or timeout log
+	end_ts = time.time()
+	diff_ts = int(end_ts - start_ts)
+	if timeout_flag == 0:
+		loginfo = build_log(3,app,diff_ts)
+	else:
+		loginfo = build_log(4,app,diff_ts)
+	log(loginfo)
 
 def parse_args():
 	global quiet
 	host = ''
 	port = -1
-	flag = 1
 	helps = 0
 	timeout = 15
+	
 	if(len(sys.argv) == 1):
 		raise Exception("Host and port must set.")
+	
+	offset = 1
 	if ':' in sys.argv[1]:
-		flag = 2
-	opts,values= getopt.getopt(sys.argv[flag:],'h:p:qt:',['host=','port=','timeout=','quiet','help'])
-	for k,v in opts:
-		if k == '-t' or k == '--timeout':
-			timeout = int(v)
-		elif k == '-h' or k == '--host':
-			host = v
-		elif k == '-p' or k == '--port':
-			port = int(v)
-		elif k == '-q' or k == '--quiet':
-			quiet = 1
-		elif k == '--help':
-			helps = 1
-	if flag == 2:
+		offset = offset + 1
 		hostport = sys.argv[1].split(':')
 		host = hostport[0]
-		port = hostport[1]
+		port = int(hostport[1])
+	
+	s_params = 'h:p:qt:'
+	l_params = ['host=','port=','timeout=','quiet','help']
+	opts,values= getopt.getopt(sys.argv[offset:],s_params,l_params)
+	
+	for k,v in opts:
+		if k == '--help': helps = 1
+		elif k == '-h' or k == '--host': host = v
+		elif k == '-q' or k == '--quiet': quiet = 1
+		elif k == '-p' or k == '--port': port = int(v)
+		elif k == '-t' or k == '--timeout': timeout = int(v)
+	
 	return host,port,timeout,quiet,helps
 
+		
+def start():
+	try:
+		host,port,timeout,quiet,helps = parse_args()
+		if host=='' or port == -1 or helps == 1:
+			usage()
+			sys.exit(0)
+		wait_for(host,port,timeout)
+	except Exception as err:
+		print(err)
+		usage()
 
 if __name__ == '__main__':
 	start()
+	
