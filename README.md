@@ -4,13 +4,16 @@ python wait-for-it for docker container
 ## Usage
 
 ```
-wait-for-it.py host:port [-s] [-t timeout]
--h HOST | --host=HOST       Host or IP under test
--p PORT | --port=PORT       TCP port under test
-                            Alternatively, you specify the host and port as host:port
--q | --quiet                Don't output any status messages
--t TIMEOUT | --timeout=TIMEOUT
-                            Timeout in seconds, zero for no timeout
+Usage: wait-for-it.py [options]
+
+Options:
+  -h, --help            show this help message and exit
+  -a ADDRESS, --address=ADDRESS
+                        Host or IP under test
+  -p PORT, --port=PORT  TCP port under test
+  -t TIMEOUT, --timeout=TIMEOUT
+                        Timeout in seconds, zero for no timeout
+  -q, --quiet           Don't output any status messages
 ```
 
 ## Examples
@@ -26,31 +29,13 @@ wait-for-it.sh: www.baidu.com:80 is available after 0 seconds
 You can set your own timeout with the `-t` or `--timeout=` option.  Setting the timeout value to 0 will disable the timeout:
 
 ```
-$ python wait-for-it.py -t 0 www.baidu.com:80
-wait-for-it.py: waiting for www.google.com:80 without a timeout
-wait-for-it.py: www.baidu.com:80 is available after 0 seconds
+$ python wait-for-it.py  -a www.baidu.com -p 8080 -t 5
+wait-for-it.py: waiting 5 seconds for www.baidu.com:8080
+wait-for-it.py: timeout occurred after waiting 5 seconds for www.baidu.com:8080
 ```
 
-The subcommand will be executed regardless if the service is up or not.  If you wish to execute the subcommand only if the service is up, add the `--strict` argument. In this example, we will test port 81 on www.google.com which will fail:
-
+If you don't want to output any log messge, you can set the `-q` or `--quiet` option to close the logger¡£
 ```
-$ ./wait-for-it.sh www.google.com:81 --timeout=1 --strict -- echo "google is up"
-wait-for-it.sh: waiting 1 seconds for www.google.com:81
-wait-for-it.sh: timeout occurred after waiting 1 seconds for www.google.com:81
-wait-for-it.sh: strict mode, refusing to execute subprocess
-```
+$ python wait-for-it.py  -a www.baidu.com -p 8080 -t 5 --quiet
 
-If you don't want to execute a subcommand, leave off the `--` argument.  This way, you can test the exit condition of `wait-for-it.sh` in your own scripts, and determine how to proceed:
-
-```
-$ ./wait-for-it.sh www.google.com:80
-wait-for-it.sh: waiting 15 seconds for www.google.com:80
-wait-for-it.sh: www.google.com:80 is available after 0 seconds
-$ echo $?
-0
-$ ./wait-for-it.sh www.google.com:81
-wait-for-it.sh: waiting 15 seconds for www.google.com:81
-wait-for-it.sh: timeout occurred after waiting 15 seconds for www.google.com:81
-$ echo $?
-124
 ```
